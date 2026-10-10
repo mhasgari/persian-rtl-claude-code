@@ -111,5 +111,17 @@ test('a left-to-right list item has its marker on the left and hangs there', () 
 
 test('a bracket pair inside one word stays together and is not treated as punctuation', () => {
   expect(show('تابع mod(1) خوب است')).toBe(['خوب است', 'mod(1)', 'تابع'].join(' '))
-  expect(show('(سلام) دنیا')).toBe(')سلام( دنیا')
+  expect(show('(سلام) دنیا')).toBe('سلام( دنیا)')
+})
+
+test('a number that starts a Persian run is placed after it behind an anchor', () => {
+  expect(show('۷. لیست‌ها:')).toBe(`:لیست‌ها${A}.۷`)
+})
+
+test('a numbered label after Latin text keeps its number at the right edge', () => {
+  expect(show('۳. کلمات `6.png` را')).toBe(`را${A}6.png کلمات${A}.۳`)
+})
+
+test('brackets at the edge of a Persian run move out, the rest are swapped', () => {
+  expect(show('و پرانتز (۱۲۳).')).toBe('.(و پرانتز )۱۲۳')
 })

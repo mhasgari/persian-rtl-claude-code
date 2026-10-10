@@ -149,7 +149,39 @@ const isPaired = (word: Word, c: string): boolean => {
 const swapped = (word: Word): Word =>
   word.map(ch => (ch.s === 'code' ? ch : { c: MIRROR[ch.c] ?? ch.c, s: ch.s }))
 
+// A number written as the first word of a Persian run (a heading's "۳.") is
+// drawn by the terminal as left-to-right text, so it would land at the run's
+// left end. It is emitted after the run instead, behind a blank
+// left-to-right anchor, with its own edge punctuation moved around it.
+const numberChars = (word: Word): Ch[] => {
+  const chars = [...word]
+  let n = 0
+
+  while (n < chars.length && LEAD.test(chars[n]!.c) && chars[n]!.s !== 'code') {
+    n++
+  }
+
+  const lead = n < chars.length ? chars.splice(0, n) : []
+  let m = 0
+
+  while (m < chars.length && TRAIL.test(chars[chars.length - 1 - m]!.c) && chars[chars.length - 1 - m]!.s !== 'code') {
+    m++
+  }
+
+  const trail = m < chars.length ? chars.splice(chars.length - m, m) : []
+
+  return [...mirrored(trail), ...chars, ...mirrored(lead)]
+}
+
 const runChars = (words: Word[], script: Script): Ch[] => {
+  if (script === 'R' && startsWithDigit(words[0]!)) {
+    const [number, ...rest] = words
+
+    return rest.length
+      ? [...runChars(rest, script), { c: L_ANCHOR, s: 'plain' }, ...numberChars(number!)]
+      : numberChars(number!)
+  }
+
   const parts = words.map(w => [...w])
   const first = parts[0]!
   const last = parts[parts.length - 1]!
@@ -159,7 +191,7 @@ const runChars = (words: Word[], script: Script): Ch[] => {
   if (first.length && last.length) {
     let n = 0
 
-    while (n < first.length && LEAD.test(first[n]!.c) && first[n]!.s !== 'code' && !isPaired(words[0]!, first[n]!.c)) {
+    while (n < first.length && LEAD.test(first[n]!.c) && first[n]!.s !== 'code' && !(script === 'L' && isPaired(words[0]!, first[n]!.c))) {
       n++
     }
 
@@ -173,7 +205,7 @@ const runChars = (words: Word[], script: Script): Ch[] => {
       m < last.length &&
       TRAIL.test(last[last.length - 1 - m]!.c) &&
       last[last.length - 1 - m]!.s !== 'code' &&
-      !isPaired(words[words.length - 1]!, last[last.length - 1 - m]!.c)
+      !(script === 'L' && isPaired(words[words.length - 1]!, last[last.length - 1 - m]!.c))
     ) {
       m++
     }
