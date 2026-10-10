@@ -1,6 +1,6 @@
 import type { Register } from 'claude-code'
 
-import { hasPersian, layoutRow, parseInline, plainWords, wrapWords } from './bidi'
+import { hasPersian, isRtl, layoutRow, parseInline, plainWords, wrapWords } from './bidi'
 import type { Row, Style, Word } from './bidi'
 
 type Block =
@@ -204,8 +204,10 @@ export const register: Register = on => {
             return
           }
 
+          const rtl = isRtl(words)
+
           wrapWords(words, columns - gap - block.indent).forEach((line, r) => {
-            const row: Row = layoutRow(line, block.marker, r === 0, block.indent)
+            const row: Row = layoutRow(line, block.marker, r === 0, block.indent, rtl)
 
             rows.push(
               <Box key={`${key}r${r}`} alignSelf="flex-end" flexDirection="row">

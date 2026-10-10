@@ -130,7 +130,26 @@ const mirrored = (chars: Ch[]): Ch[] =>
 // its start goes to its back (brackets mirrored): a neutral at a run's edge is
 // drawn on the left-to-right side of it, the wrong side for right-to-left
 // text. Code characters are never touched.
-const runChars = (words: Word[]): Ch[] => {
+const CLOSER: Record<string, string> = { '(': ')', '[': ']', '{': '}', '«': '»', '<': '>' }
+
+// True when the word holds both halves of the bracket `c` belongs to, as in
+// `mod(1)` or `(۱۲۳)`: such a pair is part of the word and stays where it is.
+const isPaired = (word: Word, c: string): boolean => {
+  const open = CLOSER[c] ? c : Object.keys(CLOSER).find(k => CLOSER[k] === c)
+
+  if (!open) {
+    return false
+  }
+
+  const count = (target: string) => word.filter(ch => ch.c === target).length
+
+  return count(open) > 0 && count(open) === count(CLOSER[open]!)
+}
+
+const swapped = (word: Word): Word =>
+  word.map(ch => (ch.s === 'code' ? ch : { c: MIRROR[ch.c] ?? ch.c, s: ch.s }))
+
+const runChars = (words: Word[], script: Script): Ch[] => {
   const parts = words.map(w => [...w])
   const first = parts[0]!
   const last = parts[parts.length - 1]!
@@ -140,7 +159,7 @@ const runChars = (words: Word[]): Ch[] => {
   if (first.length && last.length) {
     let n = 0
 
-    while (n < first.length && LEAD.test(first[n]!.c) && first[n]!.s !== 'code') {
+    while (n < first.length && LEAD.test(first[n]!.c) && first[n]!.s !== 'code' && !isPaired(words[0]!, first[n]!.c)) {
       n++
     }
 
@@ -150,7 +169,12 @@ const runChars = (words: Word[]): Ch[] => {
 
     let m = 0
 
-    while (m < last.length && TRAIL.test(last[last.length - 1 - m]!.c) && last[last.length - 1 - m]!.s !== 'code') {
+    while (
+      m < last.length &&
+      TRAIL.test(last[last.length - 1 - m]!.c) &&
+      last[last.length - 1 - m]!.s !== 'code' &&
+      !isPaired(words[words.length - 1]!, last[last.length - 1 - m]!.c)
+    ) {
       m++
     }
 
@@ -166,7 +190,9 @@ const runChars = (words: Word[]): Ch[] => {
       out.push({ c: ' ', s: 'plain' })
     }
 
-    out.push(...word)
+    // Konsole reverses the letters of a Persian run but does not mirror
+    // brackets, so one inside the run is swapped to come out facing right.
+    out.push(...(script === 'R' ? swapped(word) : word))
   })
 
   return [...out, ...mirrored(lead)]
@@ -191,9 +217,38 @@ const toSegments = (chars: Ch[]): Segment[] => {
   return segments
 }
 
+// A paragraph reads right to left when it has at least one Persian word,
+// whatever it starts with; otherwise it keeps its own left-to-right order.
+export const isRtl = (words: Word[]): boolean => words.some(w => scriptOf(w) === 'R')
+
+// A left-to-right paragraph is emitted in logical order, which is how the
+// terminal already shows it; the marker and the hanging indent are on the left.
+const layoutLtr = (words: Word[], marker: string, isFirst: boolean, indent: number): Row => {
+  const gap = marker ? cellWidth(marker) + 1 : 0
+  const chars: Ch[] = [...NBSP.repeat(indent)].map(c => ({ c, s: 'plain' as Style }))
+
+  chars.push(...[...(marker && isFirst ? marker + NBSP : NBSP.repeat(gap))].map(c => ({ c, s: 'plain' as Style })))
+
+  words.forEach((word, i) => {
+    if (i > 0) {
+      chars.push({ c: ' ', s: 'plain' })
+    }
+
+    chars.push(...word)
+  })
+
+  const segments = toSegments(chars)
+
+  return { segments, width: cellWidth(segments.map(x => x.text).join('')) }
+}
+
 // `marker` ("•", "1.") sits at the right edge of the first row; later rows keep
 // the same gap there so a wrapped item hangs under its text.
-export const layoutRow = (words: Word[], marker = '', isFirst = true, indent = 0): Row => {
+export const layoutRow = (words: Word[], marker = '', isFirst = true, indent = 0, rtl = true): Row => {
+  if (!rtl) {
+    return layoutLtr(words, marker, isFirst, indent)
+  }
+
   const scripts: Script[] = []
   const first = words.map(scriptOf).find(s => s) ?? 'R'
   let previous: Script | null = null
@@ -216,7 +271,7 @@ export const layoutRow = (words: Word[], marker = '', isFirst = true, indent = 0
   const chars: Ch[] = []
 
   for (const run of runs.reverse()) {
-    const body = runChars(run.words)
+    const body = runChars(run.words, run.script)
 
     if (chars.length) {
       const needsAnchor = run.script === 'L' && startsWithDigit(body)

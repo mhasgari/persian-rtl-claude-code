@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { hasPersian, layoutRow, parseInline, plainWords } from './bidi'
+import { hasPersian, isRtl, layoutRow, parseInline, plainWords } from './bidi'
 import { callHeader, outputBlocks, resultSections, toBlocks } from './register'
 
 const A = '⠀'
@@ -82,4 +82,34 @@ test('a tool call header names the tool and its main argument', () => {
   expect(callHeader('Bash', { command: 'echo سلام', description: 'x' })).toBe('Bash(echo سلام)')
   expect(callHeader('Read', { file_path: '/a/b.md' })).toBe('Read(/a/b.md)')
   expect(callHeader('Custom', { n: 1 })).toBe('Custom({"n":1})')
+})
+
+test('brackets inside a Persian run are swapped, because the terminal does not mirror them', () => {
+  expect(show('اگر ارقام فارسی (۱۲۳) خواستید')).toBe('اگر ارقام فارسی )۱۲۳( خواستید')
+})
+
+test('brackets in Latin text and in code are left alone', () => {
+  expect(show('از `f(x)` و mod(1) استفاده کن')).toContain('f(x)')
+  expect(show('از `f(x)` و mod(1) استفاده کن')).toContain('mod(1)')
+})
+
+test('a paragraph without Persian keeps its own order and its final period', () => {
+  const words = parseInline("Explicitly requested, so I'll edit it.")
+  expect(isRtl(words)).toBe(false)
+  expect(layoutRow(words, '', true, 0, false).segments.map(s => s.text).join('')).toBe("Explicitly requested, so I'll edit it.")
+})
+
+test('one Persian word makes the whole paragraph right to left, even when it starts in Latin', () => {
+  expect(isRtl(parseInline('mod خودکار reload می‌شود.'))).toBe(true)
+})
+
+test('a left-to-right list item has its marker on the left and hangs there', () => {
+  const words = parseInline('first item')
+  expect(layoutRow(words, '•', true, 0, false).segments.map(s => s.text).join('')).toBe(`•${N}first item`)
+  expect(layoutRow(words, '•', false, 0, false).segments.map(s => s.text).join('')).toBe(`${N}${N}first item`)
+})
+
+test('a bracket pair inside one word stays together and is not treated as punctuation', () => {
+  expect(show('تابع mod(1) خوب است')).toBe(['خوب است', 'mod(1)', 'تابع'].join(' '))
+  expect(show('(سلام) دنیا')).toBe(')سلام( دنیا')
 })
