@@ -1,13 +1,14 @@
 {
   "name": "persian-rtl",
-  "version": "0.1.0",
-  "description": "Right-aligns every user and assistant message and lays Persian/English text out right to left, correctly, in terminals such as Konsole that cannot do it themselves",
+  "version": "1.0.0",
+  "description": "Right-to-left layout for Persian text in Claude Code's transcript (messages, command output, tool calls and results), correct in terminals such as Konsole that cannot do it themselves; optionally asks the model for English progress notes",
   "keywords": [
     "rtl",
     "persian",
     "farsi",
     "bidi",
-    "terminal"
+    "terminal",
+    "konsole"
   ],
   "userConfig": {
     "englishProgressNotes": {

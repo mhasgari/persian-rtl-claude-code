@@ -7,7 +7,7 @@
     {
       "name": "persian-rtl",
       "source": "./",
-      "description": "Right-to-left layout for Persian text in Claude Code's transcript"
+      "description": "Right-to-left layout for Persian text in Claude Code's transcript (messages, command output, tool calls and results), correct in terminals such as Konsole that cannot do it themselves; optionally asks the model for English progress notes"
     }
   ],
   "description": "Marketplace for the persian-rtl plugin (right-to-left layout for Claude Code in the terminal)"
