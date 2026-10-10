@@ -46,9 +46,9 @@ test('numbered marker is anchored so the digit stays at the edge', () => {
   expect(show('یک', '1.')).toBe(`یک${A}.1`)
 })
 
-test('code blocks and tables stay raw', () => {
+test('a code block is raw and a table is a table', () => {
   const kinds = toBlocks('سلام\n\n```\nx\n```\n| a | b |\n|---|---|').map(b => b.kind)
-  expect(kinds).toEqual(['prose', 'blank', 'raw', 'raw'])
+  expect(kinds).toEqual(['prose', 'blank', 'raw', 'table'])
 })
 
 test('only text with a Persian character counts as Persian', () => {

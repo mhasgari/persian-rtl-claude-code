@@ -2,10 +2,13 @@ import type { Register } from 'claude-code'
 
 import { hasPersian, isRtl, layoutRow, parseInline, plainWords, wrapWords } from './bidi'
 import { PROGRESS_NOTES, PROGRESS_NOTES_ID } from './progress-notes'
+import { layoutTable, parseTable } from './table'
+import type { Table } from './table'
 import type { Row, Style, Word } from './bidi'
 
 type Block =
   | { kind: 'raw'; text: string }
+  | { kind: 'table'; text: string; table: Table }
   | { kind: 'blank' }
   | { kind: 'prose'; text: string; marker: string; indent: number; style: Style }
 
@@ -35,7 +38,9 @@ export const toBlocks = (text: string): Block[] => {
         table.push(lines[++i]!)
       }
 
-      blocks.push({ kind: 'raw', text: table.join('\n') })
+      const parsed = parseTable(table)
+
+      blocks.push(parsed ? { kind: 'table', text: table.join('\n'), table: parsed } : { kind: 'raw', text: table.join('\n') })
     } else if (!line.trim()) {
       if (blocks.length && blocks[blocks.length - 1]!.kind !== 'blank') {
         blocks.push({ kind: 'blank' })
@@ -194,6 +199,35 @@ export const register: Register = (on, options) => {
 
           if (block.kind === 'blank') {
             rows.push(<Text key={key}> </Text>)
+
+            return
+          }
+
+          if (block.kind === 'table') {
+            const lines = layoutTable(block.table, columns)
+
+            if (lines) {
+              lines.forEach((segments, r) =>
+                rows.push(
+                  <Box key={`${key}t${r}`} alignSelf="flex-end" flexDirection="row">
+                    {segments.map((seg, i) => (
+                      <Text key={String(i)} bold={seg.style === 'bold'} italic={seg.style === 'italic'} color={seg.style === 'code' ? 'cyan' : undefined}>
+                        {seg.text}
+                      </Text>
+                    ))}
+                  </Box>,
+                ),
+              )
+
+              return
+            }
+
+            // no Persian in it: the engine draws it as it always did
+            rows.push(
+              <Box key={key} alignSelf="flex-start" width="100%">
+                <Markdown text={block.text} />
+              </Box>,
+            )
 
             return
           }
