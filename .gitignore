@@ -1,3 +1,4 @@
 .claude-plugin/types/
 tsconfig.json
 .fuzz.md
+*.png

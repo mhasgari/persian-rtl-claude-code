@@ -158,12 +158,12 @@ export const register: Register = on => {
         sections = [{ text: props.text, mode: 'markdown', dim: component === 'InfoNotice' }]
       }
 
-      // Messages are always laid out right to left; every other row only when
-      // it holds at least one Persian character.
-      const isMessage = component === 'AssistantMessage' || component === 'UserMessage'
+      // Whatever holds no Persian character at all is left to the engine, which
+      // draws it left to right with its bullet and markdown. A paragraph of a
+      // mixed text that has none is drawn left-aligned below.
       const persian = component === 'ToolUse' ? hasPersian(JSON.stringify(props.input) ?? '') : sections.some(x => hasPersian(x.text))
 
-      if (!sections.length || !(isMessage || persian)) {
+      if (!sections.length || !persian) {
         return next(e)
       }
 
@@ -210,7 +210,7 @@ export const register: Register = on => {
             const row: Row = layoutRow(line, block.marker, r === 0, block.indent, rtl)
 
             rows.push(
-              <Box key={`${key}r${r}`} alignSelf="flex-end" flexDirection="row">
+              <Box key={`${key}r${r}`} alignSelf={rtl ? 'flex-end' : 'flex-start'} flexDirection="row">
                 {row.segments.map((s, i) => (
                   <Text
                     key={String(i)}
