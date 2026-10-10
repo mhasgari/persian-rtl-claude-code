@@ -45,9 +45,22 @@ def _run(s, level):
     chars = [units[2*i:2*i+2].decode('utf-16-le', 'surrogatepass') for i in range(n)]
     return chars, list(m), levels
 
+# Konsole cuts the line at these (measured on screen, see README): box drawing,
+# block elements and geometric shapes, U+2500..U+25FF. Each part is reordered on
+# its own, left to right, and the parts follow one another in the order written.
+_CUTS = re.compile('([\u2500-\u25ff])')
+
 def actual(s):
-    chars, m, _ = _run(s, 0)
-    return ''.join(chars[m[i]] for i in range(len(chars)))
+    out = []
+    for part in _CUTS.split(s):
+        if not part:
+            continue
+        if _CUTS.fullmatch(part):
+            out.append(part)
+            continue
+        chars, m, _ = _run(part, 0)
+        out.append(''.join(chars[m[i]] for i in range(len(chars))))
+    return ''.join(out)
 
 _LATIN = re.compile(r'[A-Za-z]')
 _PERSIAN = re.compile(r'[\u0600-\u06FF]')

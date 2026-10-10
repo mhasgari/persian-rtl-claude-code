@@ -129,6 +129,16 @@ export const wrapWords = (words: Word[], width: number): Word[][] => {
 
 type Script = 'R' | 'L'
 
+// A run is Persian, Latin, or a cut: a character at which Konsole cuts the line
+// before it reorders it (measured on screen: box drawing, block elements and
+// geometric shapes, U+2500..U+25FF, which it draws itself). Each side of a cut is
+// laid out on its own, left to right, and the sides follow one another in the
+// order written, so the plugin lays the sides out itself and reverses them.
+type RunScript = Script | 'S'
+
+const CUT = /[\u2500-\u25FF]/u
+const isCutWord = (word: Word): boolean => word.length > 0 && word.every(ch => CUT.test(ch.c)) && !word.some(ch => ch.a)
+
 // Only Persian letters and digits make a word right-to-left: the Persian comma
 // and other punctuation live in the same Unicode block but are neutral.
 const scriptOf = (word: Word): Script | null => {
@@ -150,23 +160,50 @@ const splitMixedWords = (words: Word[]): Word[] =>
       return [word]
     }
 
-    const pieces: Word[] = []
-    let piece: Word = []
-    let side: Script | null = null
+    // first at the cut characters, then each stretch between them at the script
+    const stretches: Word[] = []
+    let stretch: Word = []
+    let cutting: boolean | null = null
 
     for (const ch of word) {
-      const own = strongScriptOf(ch.c)
+      const cut = CUT.test(ch.c)
 
-      if (own && side && own !== side) {
-        pieces.push(piece)
-        piece = []
+      if (stretch.length && cut !== cutting) {
+        stretches.push(stretch)
+        stretch = []
       }
 
-      side = own ?? side
-      piece.push(ch)
+      cutting = cut
+      stretch.push(ch)
     }
 
-    pieces.push(piece)
+    stretches.push(stretch)
+
+    const pieces: Word[] = stretches.flatMap(part => {
+      if (part.length && CUT.test(part[0]!.c)) {
+        return [part]
+      }
+
+      const out: Word[] = []
+      let piece: Word = []
+      let side: Script | null = null
+
+      for (const ch of part) {
+        const own = strongScriptOf(ch.c)
+
+        if (own && side && own !== side) {
+          out.push(piece)
+          piece = []
+        }
+
+        side = own ?? side
+        piece.push(ch)
+      }
+
+      out.push(piece)
+
+      return out
+    })
 
     return pieces.map((part, i) => (i === 0 ? part : [{ ...part[0]!, g: true }, ...part.slice(1)]))
   })
@@ -491,8 +528,12 @@ const emitUnits = (units: Unit[]): Ch[] => {
 
       out.push(unit.open, ...emitUnits(unit.inner), unit.close, ...mirrored(gluedBefore))
     } else if (unit.t === 'loose') {
+      // As an island does: the pair this bracket belongs to may hold no Latin
+      // letter at all (only Persian and a cut), and then it takes the side of
+      // the Persian text before it and is reordered with it.
+      // The anchor stands where a space was, so it adds no width.
       if (out.length && hasSpace) {
-        out.push({ c: ' ', s: 'plain' })
+        out.push({ c: endsLeftToRight(out) ? ' ' : L_ANCHOR, s: 'plain' })
       }
 
       out.push({ c: MIRROR[unit.ch.c] ?? unit.ch.c, s: unit.ch.s })
@@ -759,19 +800,39 @@ export const layoutRow = (words: Word[], marker = '', isFirst = true, indent = 0
 
   words = words.map((word, i) => (forced.has(i) ? word.map(ch => ({ ...ch, a: true })) : word))
 
-  const scripts: Script[] = []
+  const scripts: RunScript[] = []
   const first = words.map(scriptOf).find(s => s) ?? 'R'
   let previous: Script | null = null
 
   words.forEach((word, i) => {
+    if (isCutWord(word)) {
+      scripts.push('S')
+
+      return
+    }
+
     previous = forced.get(i) ?? scriptOf(word) ?? previous ?? first
     scripts.push(previous)
   })
 
-  const runs: { script: Script; words: Word[] }[] = []
+  // A cut between two Latin words is inside a left-to-right phrase: not a cut.
+  scripts.forEach((script, i) => {
+    if (script !== 'S') {
+      return
+    }
+
+    const left = scripts.slice(0, i).reverse().find(x => x !== 'S')
+    const right = scripts.slice(i + 1).find(x => x !== 'S')
+
+    if (left === 'L' && right === 'L') {
+      scripts[i] = 'L'
+    }
+  })
+
+  const runs: { script: RunScript; words: Word[] }[] = []
 
   words.forEach((word, i) => {
-    if (i > 0 && scripts[i] === scripts[i - 1]) {
+    if (i > 0 && scripts[i] === scripts[i - 1] && scripts[i] !== 'S') {
       runs[runs.length - 1]!.words.push(word)
     } else {
       runs.push({ script: scripts[i]!, words: [word] })
@@ -806,21 +867,26 @@ export const layoutRow = (words: Word[], marker = '', isFirst = true, indent = 0
 
   const chars: Ch[] = []
   let laterRunGlued = false
+  let laterRunScript: RunScript | null = null
 
   for (const run of runs.reverse()) {
-    const body = runChars(run.words, run.script, spanning)
+    const body = run.script === 'S' ? [...run.words[0]!] : runChars(run.words, run.script, spanning)
 
     if (chars.length) {
       const needsAnchor = run.script === 'L' && (startsWithDigit(body) || STRONG_RTL_PUNCTUATION.test(body[0]!.c))
+      // The blank anchor that stands for the space at a cut keeps the two sides
+      // apart in a terminal that does not cut the line there.
+      const atCut = run.script === 'S' || laterRunScript === 'S'
 
       // Two pieces of one word are not separated: the later run (already
       // placed) begins with the piece that follows this run's last one.
       if (needsAnchor || !laterRunGlued) {
-        chars.push({ c: needsAnchor ? L_ANCHOR : ' ', s: 'plain' })
+        chars.push({ c: needsAnchor || atCut ? L_ANCHOR : ' ', s: 'plain' })
       }
     }
 
     laterRunGlued = run.words[0]![0]!.g === true
+    laterRunScript = run.script
     chars.push(...body)
   }
 

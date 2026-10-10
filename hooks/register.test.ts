@@ -117,7 +117,7 @@ test('a numbered label after Latin text keeps its number at the right edge', () 
 // with tools/bidi-oracle: drawn there it equals a correct right-to-left layout.
 
 test('a bracket whose partner is in a Latin run and that sits inside a Persian run splits it', () => {
-  expect(show('در (Konsole یا دیگر) را اجرا کردم.')).toBe(`.را اجرا کردم (یا دیگر Konsole) در`)
+  expect(show('در (Konsole یا دیگر) را اجرا کردم.')).toBe(`.را اجرا کردم${A}(یا دیگر Konsole) در`)
 })
 
 test('a question mark after a Latin word moves to its front', () => {
@@ -163,18 +163,18 @@ test('a bracket pair inside one Latin word is not moved', () => {
 // Neutral symbols (●, ·, →) stand at the edge of a run like punctuation does.
 
 test('a symbol word at the end of a run moves to the other end, one inside stays', () => {
-  expect(show('نقطه ● وسط جمله فارسی و ● آخر جمله ●')).toBe(`● نقطه ● وسط جمله فارسی و ● آخر جمله`)
+  expect(show('نقطه ● وسط جمله فارسی و ● آخر جمله ●')).toBe(`●${A}آخر جمله${A}●${A}وسط جمله فارسی و${A}●${A}نقطه`)
 })
 
 test('a symbol word at the start of a run moves to the other end', () => {
-  expect(show('● شروع با دایره و ● ادامه')).toBe(`شروع با دایره و ● ادامه ●`)
+  expect(show('● شروع با دایره و ● ادامه')).toBe(`ادامه${A}●${A}شروع با دایره و${A}●`)
 })
 
 // Code spans are literals and mixed-script words are cut at the script change; both
 // were checked with tools/bidi-oracle like the rows above.
 
 test('a multi-word code span stays one left-to-right unit', () => {
-  expect(show('ردیف‌هایی که با `●` شروع می‌شوند و آخرشان `· summary` دارد')).toBe(`دارد · summary ردیف\u200cهایی که با ● شروع می\u200cشوند و آخرشان`)
+  expect(show('ردیف‌هایی که با `●` شروع می‌شوند و آخرشان `· summary` دارد')).toBe(`دارد · summary شروع می\u200cشوند و آخرشان${A}●${A}ردیف\u200cهایی که با`)
 })
 
 test('a Latin word with a Persian suffix is cut at the script change', () => {
@@ -194,55 +194,90 @@ test('a path in code that holds Persian words is not reordered', () => {
 })
 
 test('lone symbols in code between Persian words keep their place', () => {
-  expect(show('برای `●` و `❯` را برگردانم')).toBe(`برای ● و ❯ را برگردانم`)
+  expect(show('برای `●` و `❯` را برگردانم')).toBe(`و ❯ را برگردانم${A}●${A}برای`)
 })
 
 // ● in every position a text puts it; each string was checked with tools/bidi-oracle.
 
 test('a bullet at the start of a sentence goes to the right edge', () => {
-  expect(show('● ابتدای جمله')).toBe(`ابتدای جمله ●`)
+  expect(show('● ابتدای جمله')).toBe(`ابتدای جمله${A}●`)
 })
 
 test('a bullet at the end of a sentence goes to the left edge', () => {
-  expect(show('انتهای جمله ●')).toBe(`● انتهای جمله`)
+  expect(show('انتهای جمله ●')).toBe(`●${A}انتهای جمله`)
 })
 
 test('a bullet in the middle of Persian text stays in place', () => {
-  expect(show('وسط ● جمله فارسی')).toBe(`وسط ● جمله فارسی`)
+  expect(show('وسط ● جمله فارسی')).toBe(`جمله فارسی${A}●${A}وسط`)
 })
 
 test('bullets at the start, in the middle and at the end of one row', () => {
-  expect(show('● ابتدا و ● وسط و انتها ●')).toBe(`● ابتدا و ● وسط و انتها ●`)
+  expect(show('● ابتدا و ● وسط و انتها ●')).toBe(`●${A}وسط و انتها${A}●${A}ابتدا و${A}●`)
 })
 
 test('bullets between Persian and Latin words', () => {
-  expect(show('بین فارسی ● و Latin ● و فارسی')).toBe(`و فارسی ● Latin بین فارسی ● و`)
+  expect(show('بین فارسی ● و Latin ● و فارسی')).toBe(`و فارسی${A}●${A}Latin و${A}●${A}بین فارسی`)
 })
 
 test('a bullet in code at the start of a row', () => {
-  expect(show('`●` داخل code در ابتدا')).toBe(`در ابتدا code داخل ●`)
+  expect(show('`●` داخل code در ابتدا')).toBe(`در ابتدا code داخل${A}●`)
 })
 
 test('a bullet in code at the end of a row', () => {
-  expect(show('داخل code در انتها `●`')).toBe(`● در انتها code داخل`)
+  expect(show('داخل code در انتها `●`')).toBe(`●${A}در انتها code داخل`)
 })
 
 test('repeated bullets stay together', () => {
-  expect(show('●● دو تا پشت هم و ●●● سه تا')).toBe(`دو تا پشت هم و ●●● سه تا ●●`)
+  expect(show('●● دو تا پشت هم و ●●● سه تا')).toBe(`سه تا${A}●●●${A}دو تا پشت هم و${A}●●`)
 })
 
 test('a bullet glued to a word, before it and after it', () => {
-  expect(show('●چسبیده به کلمه و کلمه●چسبیده و کلمه● چسبیده')).toBe(`چسبیده به کلمه و کلمه●چسبیده و کلمه● چسبیده●`)
+  expect(show('●چسبیده به کلمه و کلمه●چسبیده و کلمه● چسبیده')).toBe(`چسبیده${A}●چسبیده و کلمه●چسبیده به کلمه و کلمه●`)
 })
 
 test('a bullet glued to a Persian or a Latin number', () => {
-  expect(show('۱۲● عدد فارسی و 12● عدد لاتین و ●۱۲ و ●12')).toBe(`عدد فارسی و 12● عدد لاتین و ●۱۲ و ●12${A}●۱۲`)
+  expect(show('۱۲● عدد فارسی و 12● عدد لاتین و ●۱۲ و ●12')).toBe(`12●${A}و${A}۱۲●${A}عدد لاتین و${A}●عدد فارسی و 12${A}●۱۲`)
 })
 
 test('bullets next to punctuation words', () => {
-  expect(show('● ، ویرگول بعدش ● . نقطه ● : دونقطه ● ؟ سؤال ● !')).toBe(`! ● ویرگول بعدش ● . نقطه ● : دونقطه ● ؟ سؤال ، ●`)
+  expect(show('● ، ویرگول بعدش ● . نقطه ● : دونقطه ● ؟ سؤال ● !')).toBe(`!${A}●${A}؟ سؤال${A}●${A}دونقطه :${A}●${A}نقطه .${A}●${A}ویرگول بعدش ،${A}●`)
 })
 
 test('a bullet inside brackets and quotes', () => {
-  expect(show('(● داخل پرانتز) و [● داخل براکت] و «● داخل گیومه»')).toBe(`«و »● داخل گیومه${A}[داخل براکت ●] و${A}(داخل پرانتز ●)`)
+  expect(show('(● داخل پرانتز) و [● داخل براکت] و «● داخل گیومه»')).toBe(`«داخل گیومه${A}●» و${A}[داخل براکت${A}●] و${A}(داخل پرانتز${A}●)`)
+})
+
+// Konsole cuts the line at ● ○ ◆ ◇ ■ □ ▶ (U+2500..U+25FF) and at no other symbol; measured on screen (see the README).
+// Each string below was checked with tools/bidi-oracle, which models the cut.
+
+test('a cut symbol between Persian words lays the two sides out apart (●)', () => {
+  expect(show('اول دوم ● سوم چهارم')).toBe(`سوم چهارم${A}●${A}اول دوم`)
+})
+
+test('a cut symbol between Persian words lays the two sides out apart (▶)', () => {
+  expect(show('اول دوم ▶ سوم چهارم')).toBe(`سوم چهارم${A}▶${A}اول دوم`)
+})
+
+test('a cut symbol between Persian words lays the two sides out apart (◆)', () => {
+  expect(show('اول دوم ◆ سوم چهارم')).toBe(`سوم چهارم${A}◆${A}اول دوم`)
+})
+
+test('a symbol that is not a cut leaves the row whole (→)', () => {
+  expect(show('اول دوم → سوم چهارم')).toBe(`اول دوم → سوم چهارم`)
+})
+
+test('a symbol that is not a cut leaves the row whole (—)', () => {
+  expect(show('اول دوم — سوم چهارم')).toBe(`اول دوم — سوم چهارم`)
+})
+
+test('a symbol that is not a cut leaves the row whole (·)', () => {
+  expect(show('اول دوم · سوم چهارم')).toBe(`اول دوم · سوم چهارم`)
+})
+
+test('cut symbols around a Latin word', () => {
+  expect(show('اول دوم ● Latin ● سوم چهارم')).toBe(`سوم چهارم${A}●${A}Latin${A}●${A}اول دوم`)
+})
+
+test('a cut between two Latin words is not a cut', () => {
+  expect(show('Latin ● Latin دوم')).toBe(`دوم Latin ● Latin`)
 })
