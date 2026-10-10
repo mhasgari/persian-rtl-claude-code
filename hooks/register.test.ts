@@ -308,3 +308,49 @@ test('the progress-notes section keeps the sections the engine composed', async 
 
   expect(sections.map(s => s.id)).toEqual(['intro', 'persian-rtl:english-progress-notes'])
 })
+
+// The reminder beside a Persian prompt of the user's.
+const submit = (text: string, kind: 'composer' | 'task-notification' | 'sdk' = 'composer') => ({
+  text,
+  wait: false,
+  origin: { kind },
+})
+
+const reminderOf = (result: { context?: readonly string[] }): readonly string[] =>
+  (result.context ?? []).filter(c => c.includes('persian-rtl plugin'))
+
+test('a Persian prompt of the user gets the reminder beside it, unseen', async ($, on) => {
+  on('prompt.submit', (_$, e) => ({ text: e.text, context: e.context }))
+
+  const result = await $.prompt.submit(submit('سلام، فایل‌ها را بخوان'))
+
+  expect(result.text).toBe('سلام، فایل‌ها را بخوان')
+  expect(reminderOf(result)).toHaveLength(1)
+})
+
+test('a prompt with no Persian gets nothing', async ($, on) => {
+  on('prompt.submit', (_$, e) => ({ text: e.text, context: e.context }))
+
+  expect(reminderOf(await $.prompt.submit(submit('read the files')))).toHaveLength(0)
+})
+
+test('a notification is not the user: no reminder beside it', async ($, on) => {
+  on('prompt.submit', (_$, e) => ({ text: e.text, context: e.context }))
+
+  expect(reminderOf(await $.prompt.submit(submit('کار پس‌زمینه تمام شد', 'task-notification')))).toHaveLength(0)
+})
+
+test('the reminder is added to the context that was already there', async ($, on) => {
+  on('prompt.submit', (_$, e) => ({ text: e.text, context: [...(e.context ?? []), 'other plugin'] }))
+
+  const result = await $.prompt.submit(submit('سلام'))
+
+  expect(result.context).toContain('other plugin')
+  expect(reminderOf(result)).toHaveLength(1)
+})
+
+test('with the option off there is no reminder', { options: { englishProgressNotes: false } }, async ($, on) => {
+  on('prompt.submit', (_$, e) => ({ text: e.text, context: e.context }))
+
+  expect(reminderOf(await $.prompt.submit(submit('سلام')))).toHaveLength(0)
+})

@@ -1,6 +1,6 @@
 {
   "name": "persian-rtl",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Right-to-left layout for Persian text in Claude Code's transcript (messages, command output, tool calls and results), correct in terminals such as Konsole that cannot do it themselves; optionally asks the model for English progress notes",
   "keywords": [
     "rtl",
@@ -14,7 +14,7 @@
     "englishProgressNotes": {
       "type": "boolean",
       "title": "Progress notes in English",
-      "description": "Ask the model to write the text between tool calls in English when you write to it in Persian, Arabic, Hebrew or Urdu. Claude Code shows that text as a server-written summary, drawn left to right where a plugin cannot reach it: English reads correctly there, Persian does not. Turn off to leave the model's language alone.",
+      "description": "Ask the model to write the text between tool calls in English when you write to it in Persian, Arabic, Hebrew or Urdu, in the system prompt and in a reminder beside each of your Persian prompts. Claude Code shows that text as a server-written summary, drawn left to right where a plugin cannot reach it: English reads correctly there, Persian does not. Turn off to leave the model's language alone.",
       "default": true
     }
   }

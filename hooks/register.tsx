@@ -1,7 +1,7 @@
 import type { Register } from 'claude-code'
 
 import { hasPersian, isRtl, layoutRow, parseInline, plainWords, wrapWords } from './bidi'
-import { PROGRESS_NOTES, PROGRESS_NOTES_ID } from './progress-notes'
+import { FROM_THE_USER, PROGRESS_NOTES, PROGRESS_NOTES_ID, PROGRESS_REMINDER } from './progress-notes'
 import { layoutTable, parseTable } from './table'
 import type { Table } from './table'
 import type { Row, Style, Word } from './bidi'
@@ -142,6 +142,16 @@ export const register: Register = (on, options) => {
         ...result,
         sections: [...result.sections, { id: PROGRESS_NOTES_ID, text: PROGRESS_NOTES, scope: 'session' }],
       }
+    })
+
+    // The same rule again beside each Persian prompt of the user's: what the model
+    // reads last is what it follows best, and the user never sees it.
+    on('prompt.submit', ($, e, next) => {
+      if (!hasPersian(e.text) || !FROM_THE_USER.includes(e.origin?.kind ?? 'composer')) {
+        return next(e)
+      }
+
+      return next({ ...e, context: [...(e.context ?? []), PROGRESS_REMINDER] })
     })
   }
 
