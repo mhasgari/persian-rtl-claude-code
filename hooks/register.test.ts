@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
-import { layoutRow, parseInline } from './bidi'
-import { toBlocks } from './register'
+import { hasPersian, layoutRow, parseInline, plainWords } from './bidi'
+import { outputBlocks, toBlocks } from './register'
 
 const A = '⠀'
 const N = ' '
@@ -49,4 +49,21 @@ test('numbered marker is anchored so the digit stays at the edge', () => {
 test('code blocks and tables stay raw', () => {
   const kinds = toBlocks('سلام\n\n```\nx\n```\n| a | b |\n|---|---|').map(b => b.kind)
   expect(kinds).toEqual(['prose', 'blank', 'raw', 'raw'])
+})
+
+test('only text with a Persian character counts as Persian', () => {
+  expect(hasPersian('abc س')).toBe(true)
+  expect(hasPersian('abc 123 .')).toBe(false)
+})
+
+test('program output keeps every character and does not parse markdown', () => {
+  const words = plainWords('**a** `b` سلام')
+  expect(words.map(w => w.map(c => c.c).join(''))).toEqual(['**a**', '`b`', 'سلام'])
+  expect(words.every(w => w.every(c => c.s === 'plain'))).toBe(true)
+})
+
+test('output is capped and says how many lines were left out', () => {
+  const blocks = outputBlocks(Array.from({ length: 70 }, (_, i) => `سطر ${i}`).join('\n'))
+  expect(blocks).toHaveLength(61)
+  expect(blocks[60]).toMatchObject({ text: '… +10 lines' })
 })

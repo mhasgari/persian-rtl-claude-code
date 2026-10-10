@@ -32,6 +32,8 @@ const INLINE = /(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|\*[^*\s][^*]*\*|\[[^\]]+\]\([^)
 export const cellWidth = (text: string): number =>
   [...text].filter(c => !ZERO_WIDTH.test(c)).length
 
+export const hasPersian = (text: string): boolean => [...text].some(c => PERSIAN.test(c))
+
 const textOf = (word: Word): string => word.map(ch => ch.c).join('')
 
 export const parseInline = (text: string, base: Style = 'plain'): Word[] => {
@@ -78,6 +80,13 @@ export const parseInline = (text: string, base: Style = 'plain'): Word[] => {
 
   return words
 }
+
+// One line of program output: every character kept as written, no markdown.
+export const plainWords = (line: string): Word[] =>
+  line
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => [...word].map(c => ({ c, s: 'plain' as Style })))
 
 export const wrapWords = (words: Word[], width: number): Word[][] => {
   const rows: Word[][] = []
