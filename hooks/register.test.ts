@@ -159,3 +159,17 @@ test('a number alone after a question mark gets an anchor so it stays apart', ()
 test('a bracket pair inside one Latin word is not moved', () => {
   expect(show('تابع mod(1) خوب است')).toBe(['خوب است', 'mod(1)', 'تابع'].join(' '))
 })
+
+// Neutral symbols (●, ·, →) stand at the edge of a run like punctuation does.
+
+test('a symbol word at the end of a run moves to the other end, one inside stays', () => {
+  expect(show('نقطه ● وسط جمله فارسی و ● آخر جمله ●')).toBe(`● نقطه ● وسط جمله فارسی و ● آخر جمله`)
+})
+
+test('a symbol word at the start of a run moves to the other end', () => {
+  expect(show('● شروع با دایره و ● ادامه')).toBe(`شروع با دایره و ● ادامه ●`)
+})
+
+test('symbol words in code spans at the edge of a run move like any neutral word', () => {
+  expect(show('ردیف‌هایی که با `●` شروع می‌شوند و آخرشان `· summary` دارد')).toBe(`دارد summary · ردیف\u200cهایی که با ● شروع می\u200cشوند و آخرشان`)
+})

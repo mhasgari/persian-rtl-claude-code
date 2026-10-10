@@ -423,9 +423,64 @@ const emitUnits = (units: Unit[]): Ch[] => {
   return out
 }
 
+// A word with no letter, digit or mark in it: "●", "·", "—", "->". Such a word
+// at the edge of a run is neutral text like the punctuation on a word, and is
+// moved to the other end of the run for the same reason.
+const NEUTRAL_WORD = /^[^\p{L}\p{N}\p{M}]+$/u
+
+const isNeutralWord = (word: Word): boolean =>
+  NEUTRAL_WORD.test(textOf(word)) && !STRONG_RTL_PUNCTUATION.test(textOf(word))
+
+const splitNeutralEdges = (words: Word[]): { lead: Word[]; core: Word[]; trail: Word[] } => {
+  let a = 0
+
+  while (isNeutralWord(words[a]!)) {
+    a++
+  }
+
+  let b = words.length
+
+  while (isNeutralWord(words[b - 1]!)) {
+    b--
+  }
+
+  return { lead: words.slice(0, a), core: words.slice(a, b), trail: words.slice(b) }
+}
+
+// Neutral words as they stand at an end of a run once moved: in reverse order,
+// brackets mirrored, set apart from the run by one space.
+const neutralWordsOut = (words: Word[]): Ch[] =>
+  [...words].reverse().flatMap((word, i) => [...(i > 0 ? [{ c: ' ', s: 'plain' as Style }] : []), ...mirrored(word)])
+
+const withNeutralEdges = (words: Word[], inner: (core: Word[]) => Ch[]): Ch[] => {
+  // Only neutral words: the terminal leaves them in the order they are
+  // handed over, so they go in the order they should be drawn.
+  if (words.every(isNeutralWord)) {
+    return neutralWordsOut(words)
+  }
+
+  const { lead, core, trail } = splitNeutralEdges(words)
+
+  if (!lead.length && !trail.length) {
+    return inner(words)
+  }
+
+  const space: Ch[] = [{ c: ' ', s: 'plain' }]
+
+  return [
+    ...neutralWordsOut(trail),
+    ...(trail.length ? space : []),
+    ...inner(core),
+    ...(lead.length ? space : []),
+    ...neutralWordsOut(lead),
+  ]
+}
+
 // A stretch of Persian text with no bracket group in it, in the order the
 // terminal should be handed it.
-const chunkChars = (words: Word[]): Ch[] => {
+const chunkChars = (words: Word[]): Ch[] => withNeutralEdges(words, chunkCore)
+
+const chunkCore = (words: Word[]): Ch[] => {
   if (startsWithDigit(words[0]!)) {
     const [number, ...rest] = words
 
@@ -515,6 +570,10 @@ const runChars = (words: Word[], script: Script, spanning: Set<Ch>): Ch[] => {
   // A Latin run is not reversed by the terminal, so its brackets and order are
   // left alone; only punctuation at its edges moves, as in a right-to-left
   // paragraph, and a bracket pair inside one word (mod(1)) stays.
+  return withNeutralEdges(words, latinCore)
+}
+
+const latinCore = (words: Word[]): Ch[] => {
   const parts = words.map(w => [...w])
   const first = parts[0]!
   const last = parts[parts.length - 1]!

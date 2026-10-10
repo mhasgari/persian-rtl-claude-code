@@ -16,11 +16,13 @@ random.seed(int(sys.argv[1]) if len(sys.argv) > 1 else 1)
 P = ['سلام', 'دنیا', 'پلاگین', 'نسخه‌ی', 'کتاب‌ها', 'می‌کنم', 'آزمایش', 'مورد', 'و', 'را', 'که', 'این', 'تابع', 'فایل', 'متن', 'خط', 'کلمه', 'ردیف']
 D = ['۱۲۳', '۴۵', '۰٫۵', '۷', '۱۴۰۴/۰۷/۱۸', '12', '4.5', '2024']
 L = ['mod', 'reload', 'Konsole', 'f(x)', '6.png', 'e.g.', 'a-b', 'C++', 'x2']
+SYM = ['●', '·', '•', '→', '—', '◆', '-']
 END = ['.', '،', '؟', '!', ':', '؛', '…']
 
 def tok():
     r = random.random()
-    return random.choice(P) if r < .6 else random.choice(D) if r < .75 else random.choice(L)
+    return (random.choice(P) if r < .55 else random.choice(D) if r < .68 else random.choice(L) if r < .88
+            else random.choice(SYM))
 
 def sentence():
     toks = [tok() for _ in range(random.randint(3, 7))]
