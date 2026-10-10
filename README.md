@@ -20,13 +20,15 @@
 پلاگین یک بار نصب می‌شود و از آن به بعد در هر اجرای `claude` فعال است:
 
 ```sh
-claude plugin marketplace add /مسیر/به/این/مخزن      # یا نشانی GitHub مخزن
+claude plugin marketplace add mhasgari/persian-rtl-claude-code
 claude plugin install persian-rtl@rtlclaudecode
 ```
 
+(`mhasgari/persian-rtl-claude-code` مخزن GitHub است؛ نام `rtlclaudecode` در دستور دوم نام marketplace درون مخزن است، نه نام مخزن. اگر مخزن را کلون کرده‌اید، به‌جای نشانی GitHub مسیر پوشه‌اش را بدهید.)
+
 اگر Claude Code از قبل باز است، داخل آن `/reload-plugins` را بزنید. برای خاموش کردن: `claude plugin disable persian-rtl`.
 
-چون marketplace یک پوشه است، پلاگین **مستقیم از همان پوشه‌ی مخزن** خوانده می‌شود: پوشه را جابه‌جا یا پاک نکنید، و ویرایش‌های بعدی با `/reload-plugins` اعمال می‌شوند. نسخه‌ها در [CHANGELOG.md](CHANGELOG.md) هستند.
+اگر marketplace را از **پوشه‌ی محلی** اضافه کرده باشید، پلاگین **مستقیم از همان پوشه** خوانده می‌شود: پوشه را جابه‌جا یا پاک نکنید، و ویرایش‌های بعدی با `/reload-plugins` اعمال می‌شوند. اگر از GitHub اضافه کرده باشید، Claude Code نسخه‌ای از مخزن را نصب می‌کند و برای نسخه‌ی تازه `claude plugin update persian-rtl@rtlclaudecode` را بزنید. نسخه‌ها در [CHANGELOG.md](CHANGELOG.md) هستند.
 
 ### اجرای موقت (فقط برای همان اجرا)
 
