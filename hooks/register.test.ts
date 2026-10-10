@@ -84,10 +84,6 @@ test('a tool call header names the tool and its main argument', () => {
   expect(callHeader('Custom', { n: 1 })).toBe('Custom({"n":1})')
 })
 
-test('brackets inside a Persian run are swapped, because the terminal does not mirror them', () => {
-  expect(show('اگر ارقام فارسی (۱۲۳) خواستید')).toBe('اگر ارقام فارسی )۱۲۳( خواستید')
-})
-
 test('brackets in Latin text and in code are left alone', () => {
   expect(show('از `f(x)` و mod(1) استفاده کن')).toContain('f(x)')
   expect(show('از `f(x)` و mod(1) استفاده کن')).toContain('mod(1)')
@@ -109,11 +105,6 @@ test('a left-to-right list item has its marker on the left and hangs there', () 
   expect(layoutRow(words, '•', false, 0, false).segments.map(s => s.text).join('')).toBe(`${N}${N}first item`)
 })
 
-test('a bracket pair inside one word stays together and is not treated as punctuation', () => {
-  expect(show('تابع mod(1) خوب است')).toBe(['خوب است', 'mod(1)', 'تابع'].join(' '))
-  expect(show('(سلام) دنیا')).toBe('سلام( دنیا)')
-})
-
 test('a number that starts a Persian run is placed after it behind an anchor', () => {
   expect(show('۷. لیست‌ها:')).toBe(`:لیست‌ها${A}.۷`)
 })
@@ -122,6 +113,49 @@ test('a numbered label after Latin text keeps its number at the right edge', () 
   expect(show('۳. کلمات `6.png` را')).toBe(`را${A}6.png کلمات${A}.۳`)
 })
 
-test('brackets at the edge of a Persian run move out, the rest are swapped', () => {
-  expect(show('و پرانتز (۱۲۳).')).toBe('.(و پرانتز )۱۲۳')
+// Each expected string below was checked against ICU's bidi (what Konsole runs)
+// with tools/bidi-oracle: drawn there it equals a correct right-to-left layout.
+
+test('a bracket whose partner is in a Latin run and that sits inside a Persian run splits it', () => {
+  expect(show('در (Konsole یا دیگر) را اجرا کردم.')).toBe(`.را اجرا کردم (یا دیگر Konsole) در`)
+})
+
+test('a question mark after a Latin word moves to its front', () => {
+  expect(show('آیا Konsole؟')).toBe(`؟Konsole آیا`)
+})
+
+test('a question mark after a number keeps its place in the run', () => {
+  expect(show('آیا ۷؟')).toBe(`آیا ۷؟`)
+})
+
+test('punctuation after a bracket group travels with the group', () => {
+  expect(show('مثال (ساده)، مثال (دیگر).')).toBe(`.(دیگر) مثال${A}،(ساده) مثال`)
+})
+
+test('quotes around a bracket group travel with it', () => {
+  expect(show('او «(نقل)» گفت.')).toBe(`.گفت${A}«(نقل)» او`)
+})
+
+test('a bracket group inside Persian text is an island behind an anchor', () => {
+  expect(show('اگر ارقام فارسی (۱۲۳) خواستید.')).toBe(`.خواستید${A}(۱۲۳) اگر ارقام فارسی`)
+})
+
+test('several groups on one side of a Latin word stay apart', () => {
+  expect(show('پلاگین persian-rtl نسخه‌ی ۰٫۱٫۰ و (۱۲۳) مورد و (456) مورد.')).toBe(`.مورد${A}(456) مورد و${A}(۱۲۳) نسخه\u200cی ۰٫۱٫۰ و persian-rtl پلاگین`)
+})
+
+test('a group on the other side of a Latin word keeps its order', () => {
+  expect(show('در (نسخه‌ی 2.1.289) پلاگین persian-rtl آزمایش شد.')).toBe(`.آزمایش شد persian-rtl پلاگین${A}(نسخه\u200cی 2.1.289) در`)
+})
+
+test('Latin words with digits and brackets stay whole', () => {
+  expect(show('فایل `6.png` و تابع `mod(1)` را دیدم.')).toBe(`.را دیدم mod(1) و تابع${A}6.png فایل`)
+})
+
+test('a number alone after a question mark gets an anchor so it stays apart', () => {
+  expect(show('۷؟')).toBe(`؟${A}۷`)
+})
+
+test('a bracket pair inside one Latin word is not moved', () => {
+  expect(show('تابع mod(1) خوب است')).toBe(['خوب است', 'mod(1)', 'تابع'].join(' '))
 })
