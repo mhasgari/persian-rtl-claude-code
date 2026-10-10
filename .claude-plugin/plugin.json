@@ -1,6 +1,6 @@
 {
   "name": "persian-rtl",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Right-to-left layout for Persian text in Claude Code's transcript (messages, command output, tool calls and results), correct in terminals such as Konsole that cannot do it themselves; optionally asks the model for English progress notes",
   "author": {
     "name": "Hadi Asgari"
@@ -20,7 +20,13 @@
     "englishProgressNotes": {
       "type": "boolean",
       "title": "Progress notes in English",
-      "description": "Ask the model to write the text between tool calls in English when you write to it in Persian, Arabic, Hebrew or Urdu, in the system prompt and in a reminder beside each of your Persian prompts. Claude Code shows that text as a server-written summary, drawn left to right where a plugin cannot reach it: English reads correctly there, Persian does not. Turn off to leave the model's language alone.",
+      "description": "Ask the model, when you write to it in Persian, Arabic, Hebrew or Urdu, to keep the text between tool calls in English and short, in the system prompt and in a reminder beside each of your Persian prompts. Claude Code often shows that text as a server-written summary drawn left to right, where a plugin cannot reach it: English reads correctly there, Persian does not. Turn off to leave the model's language alone.",
+      "default": true
+    },
+    "persianFirstMessage": {
+      "type": "boolean",
+      "title": "First message of a turn in Persian",
+      "description": "While progress notes are in English: let the model's first sentence of a turn (before its first tool call) stay in your language. It is shown as written, and laid out right to left, about two times in three; one time in three the server turns it into a summary that reads left to right. Turn off to have that sentence in English too.",
       "default": true
     }
   }

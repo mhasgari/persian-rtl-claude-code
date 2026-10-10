@@ -1,7 +1,7 @@
 import type { Register } from 'claude-code'
 
 import { hasPersian, isRtl, layoutRow, parseInline, plainWords, wrapWords } from './bidi'
-import { FROM_THE_USER, PROGRESS_NOTES, PROGRESS_NOTES_ID, PROGRESS_REMINDER } from './progress-notes'
+import { FROM_THE_USER, PROGRESS_NOTES_ID, progressNotes, progressReminder } from './progress-notes'
 import { layoutTable, parseTable } from './table'
 import type { Table } from './table'
 import type { Row, Style, Word } from './bidi'
@@ -135,12 +135,15 @@ export const register: Register = (on, options) => {
   // On unless the user turned it off: the summaries of the text between tool calls
   // can only be read the right way round if that text is English (see progress-notes.ts).
   if (options.englishProgressNotes !== false) {
+    // The first message of a turn is shown as written two times in three: Persian by default.
+    const persianFirst = options.persianFirstMessage !== false
+
     on('prompt.compose', async ($, e, next) => {
       const result = await next(e)
 
       return {
         ...result,
-        sections: [...result.sections, { id: PROGRESS_NOTES_ID, text: PROGRESS_NOTES, scope: 'session' }],
+        sections: [...result.sections, { id: PROGRESS_NOTES_ID, text: progressNotes(persianFirst), scope: 'session' }],
       }
     })
 
@@ -151,7 +154,7 @@ export const register: Register = (on, options) => {
         return next(e)
       }
 
-      return next({ ...e, context: [...(e.context ?? []), PROGRESS_REMINDER] })
+      return next({ ...e, context: [...(e.context ?? []), progressReminder(persianFirst)] })
     })
   }
 
