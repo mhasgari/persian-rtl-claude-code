@@ -1,0 +1,14 @@
+{
+  "name": "rtlclaudecode",
+  "owner": {
+    "name": "rtlclaudecode"
+  },
+  "plugins": [
+    {
+      "name": "persian-rtl",
+      "source": "./",
+      "description": "Right-to-left layout for Persian text in Claude Code's transcript"
+    }
+  ],
+  "description": "Marketplace for the persian-rtl plugin (right-to-left layout for Claude Code in the terminal)"
+}
