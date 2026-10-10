@@ -196,3 +196,53 @@ test('a path in code that holds Persian words is not reordered', () => {
 test('lone symbols in code between Persian words keep their place', () => {
   expect(show('برای `●` و `❯` را برگردانم')).toBe(`برای ● و ❯ را برگردانم`)
 })
+
+// ● in every position a text puts it; each string was checked with tools/bidi-oracle.
+
+test('a bullet at the start of a sentence goes to the right edge', () => {
+  expect(show('● ابتدای جمله')).toBe(`ابتدای جمله ●`)
+})
+
+test('a bullet at the end of a sentence goes to the left edge', () => {
+  expect(show('انتهای جمله ●')).toBe(`● انتهای جمله`)
+})
+
+test('a bullet in the middle of Persian text stays in place', () => {
+  expect(show('وسط ● جمله فارسی')).toBe(`وسط ● جمله فارسی`)
+})
+
+test('bullets at the start, in the middle and at the end of one row', () => {
+  expect(show('● ابتدا و ● وسط و انتها ●')).toBe(`● ابتدا و ● وسط و انتها ●`)
+})
+
+test('bullets between Persian and Latin words', () => {
+  expect(show('بین فارسی ● و Latin ● و فارسی')).toBe(`و فارسی ● Latin بین فارسی ● و`)
+})
+
+test('a bullet in code at the start of a row', () => {
+  expect(show('`●` داخل code در ابتدا')).toBe(`در ابتدا code داخل ●`)
+})
+
+test('a bullet in code at the end of a row', () => {
+  expect(show('داخل code در انتها `●`')).toBe(`● در انتها code داخل`)
+})
+
+test('repeated bullets stay together', () => {
+  expect(show('●● دو تا پشت هم و ●●● سه تا')).toBe(`دو تا پشت هم و ●●● سه تا ●●`)
+})
+
+test('a bullet glued to a word, before it and after it', () => {
+  expect(show('●چسبیده به کلمه و کلمه●چسبیده و کلمه● چسبیده')).toBe(`چسبیده به کلمه و کلمه●چسبیده و کلمه● چسبیده●`)
+})
+
+test('a bullet glued to a Persian or a Latin number', () => {
+  expect(show('۱۲● عدد فارسی و 12● عدد لاتین و ●۱۲ و ●12')).toBe(`عدد فارسی و 12● عدد لاتین و ●۱۲ و ●12${A}●۱۲`)
+})
+
+test('bullets next to punctuation words', () => {
+  expect(show('● ، ویرگول بعدش ● . نقطه ● : دونقطه ● ؟ سؤال ● !')).toBe(`! ● ویرگول بعدش ● . نقطه ● : دونقطه ● ؟ سؤال ، ●`)
+})
+
+test('a bullet inside brackets and quotes', () => {
+  expect(show('(● داخل پرانتز) و [● داخل براکت] و «● داخل گیومه»')).toBe(`«و »● داخل گیومه${A}[داخل براکت ●] و${A}(داخل پرانتز ●)`)
+})

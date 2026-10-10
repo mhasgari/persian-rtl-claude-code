@@ -9,8 +9,9 @@
 
 export type Style = 'plain' | 'bold' | 'italic' | 'code'
 // `g` marks the first character of a piece that was cut from a word at a change of
-// script and so follows the previous piece with no space.
-export type Ch = { c: string; s: Style; g?: boolean }
+// script and so follows the previous piece with no space; `a` marks a character of
+// a code span that is laid out as one left-to-right unit and so is never moved.
+export type Ch = { c: string; s: Style; g?: boolean; a?: boolean }
 export type Word = Ch[]
 export type Segment = { text: string; style: Style }
 export type Row = { segments: Segment[]; width: number }
@@ -25,8 +26,14 @@ const LETTER = /\p{L}/u
 const LATIN = /\p{Script=Latin}/u
 const ALNUM = /[\p{L}\p{N}]/u
 const ZERO_WIDTH = /[​-‏‪-‮ً-ٰٟ]/
-const LEAD = /[«(\[{"“‘<]/
-const TRAIL = /[.,،؛;:!?؟…»)\]}"”’>]/
+// Characters that stand at the edge of a word without being part of it: quotes,
+// brackets and punctuation, and any symbol or punctuation mark outside ASCII
+// (●, →, —, ·). ASCII symbols (/ ~ # @ -) belong to the word they begin or end,
+// as in a path or an option, and so do the signs that go with a number (٪ ‰ °
+// and currencies). Letters, digits, marks and the zero-width joiners are the word.
+const SYMBOL_EDGE = String.raw`(?![\x00-\x7F])(?![٪‰°′″\p{Sc}])[\p{S}\p{P}]`
+const LEAD = new RegExp(String.raw`[«(\[{"“‘<]|${SYMBOL_EDGE}`, 'u')
+const TRAIL = new RegExp(String.raw`[.,،؛;:!?؟…»)\]}"”’>]|${SYMBOL_EDGE}`, 'u')
 // The Arabic semicolon and question mark are right-to-left letters as far as
 // bidi is concerned, unlike the Persian comma, which is neutral.
 const STRONG_RTL_PUNCTUATION = /[\u061B\u061F]/
@@ -507,7 +514,7 @@ const emitUnits = (units: Unit[]): Ch[] => {
 const NEUTRAL_WORD = /^[^\p{L}\p{N}\p{M}]+$/u
 
 const isNeutralWord = (word: Word): boolean =>
-  !word.some(ch => ch.s === 'code') && NEUTRAL_WORD.test(textOf(word)) && !STRONG_RTL_PUNCTUATION.test(textOf(word))
+  !word.some(ch => ch.a) && NEUTRAL_WORD.test(textOf(word)) && !STRONG_RTL_PUNCTUATION.test(textOf(word))
 
 const splitNeutralEdges = (words: Word[]): { lead: Word[]; core: Word[]; trail: Word[] } => {
   let a = 0
@@ -748,9 +755,12 @@ export const layoutRow = (words: Word[], marker = '', isFirst = true, indent = 0
 
   words = splitMixedWords(words)
 
+  const forced = codeSpanScripts(words)
+
+  words = words.map((word, i) => (forced.has(i) ? word.map(ch => ({ ...ch, a: true })) : word))
+
   const scripts: Script[] = []
   const first = words.map(scriptOf).find(s => s) ?? 'R'
-  const forced = codeSpanScripts(words)
   let previous: Script | null = null
 
   words.forEach((word, i) => {
