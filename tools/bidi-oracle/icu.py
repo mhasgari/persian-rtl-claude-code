@@ -82,15 +82,26 @@ def isolate_latin(s):
     words = [i for i, t in enumerate(toks) if t.strip()]
     latin = {i for i in words if _LATIN.search(toks[i]) and not _PERSIAN_LETTER.search(toks[i])}
     ascii_num = {i for i in words if i not in latin and _ASCII_NUM.match(toks[i])}
+    # a token with no letter or digit at all (an arrow, a dash) between two Latin
+    # tokens is Latin too: neutrals between two left-to-right letters take their side
+    neutral = {i for i in words if i not in latin and i not in ascii_num
+               and not re.search(r'[\w]', toks[i]) and not _PERSIAN.search(toks[i])}
+    for k, i in enumerate(words):
+        if i in neutral:
+            prev_ok = k > 0 and (words[k - 1] in latin or words[k - 1] in ascii_num or words[k - 1] in neutral)
+            next_ok = k + 1 < len(words) and (words[k + 1] in latin or words[k + 1] in ascii_num)
+            if not (prev_ok and next_ok):
+                neutral.discard(i)
     phrases, cur = [], []
     for i in words:
-        if i in latin or (i in ascii_num and cur):
+        if i in latin or i in neutral or (i in ascii_num and cur):
             cur.append(i)
         else:
             if cur: phrases.append(cur)
             cur = []
     if cur: phrases.append(cur)
     for ph in phrases:
+        while ph and ph[-1] in neutral: ph = ph[:-1]
         if not ph or not any(i in latin for i in ph): continue
         lead, _, _ = _core(toks[ph[0]])
         _, _, trail = _core(toks[ph[-1]])
@@ -115,7 +126,9 @@ def ideal(s):
     return ''.join(out)
 
 def norm(t):
-    for cp in (0x2066, 0x2067, 0x2068, 0x2069):
+    # isolates are the oracle's own scaffolding; a zero-width joiner or non-joiner
+    # has no width and only shapes the letters beside it, so where it sits is not order
+    for cp in (0x2066, 0x2067, 0x2068, 0x2069, 0x200c, 0x200d):
         t = t.replace(chr(cp), '')
     return t.replace(chr(0x2800), ' ').replace(chr(0xa0), ' ')
 

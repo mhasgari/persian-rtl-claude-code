@@ -5,7 +5,36 @@
 import { readFileSync } from 'node:fs'
 
 import { isRtl, layoutRow, parseInline, wrapWords } from '../../hooks/bidi'
+import type { Word } from '../../hooks/bidi'
 import { toBlocks } from '../../hooks/register'
+
+// The row's text as a reader would take it, with every code span wrapped in
+// LRI..PDI: a code span is a literal, drawn as written and never reordered.
+const logicalText = (words: Word[]): string => {
+  let out = ''
+  let inCode = false
+
+  words.forEach((word, i) => {
+    if (i > 0) {
+      out += inCode && word[0]?.s === 'code' ? ' ' : (inCode ? '\u2069' : '') + ' '
+      inCode = inCode && word[0]?.s === 'code'
+    }
+
+    for (const ch of word) {
+      if (ch.s === 'code' && !inCode) {
+        out += '\u2066'
+        inCode = true
+      } else if (ch.s !== 'code' && inCode) {
+        out += '\u2069'
+        inCode = false
+      }
+
+      out += ch.c
+    }
+  })
+
+  return out + (inCode ? '\u2069' : '')
+}
 
 const text = readFileSync(process.argv[2]!, 'utf8')
 const columns = Number(process.argv[3] ?? 114)
@@ -28,7 +57,7 @@ toBlocks(text).forEach((block, b) => {
       row: r,
       rtl,
       marker: block.marker,
-      logical: line.map(w => w.map(c => c.c).join('')).join(' '),
+      logical: logicalText(line),
       s: row.segments.map(x => x.text).join(''),
     })
   })

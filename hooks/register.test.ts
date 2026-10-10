@@ -170,6 +170,29 @@ test('a symbol word at the start of a run moves to the other end', () => {
   expect(show('● شروع با دایره و ● ادامه')).toBe(`شروع با دایره و ● ادامه ●`)
 })
 
-test('symbol words in code spans at the edge of a run move like any neutral word', () => {
-  expect(show('ردیف‌هایی که با `●` شروع می‌شوند و آخرشان `· summary` دارد')).toBe(`دارد summary · ردیف\u200cهایی که با ● شروع می\u200cشوند و آخرشان`)
+// Code spans are literals and mixed-script words are cut at the script change; both
+// were checked with tools/bidi-oracle like the rows above.
+
+test('a multi-word code span stays one left-to-right unit', () => {
+  expect(show('ردیف‌هایی که با `●` شروع می‌شوند و آخرشان `· summary` دارد')).toBe(`دارد · summary ردیف\u200cهایی که با ● شروع می\u200cشوند و آخرشان`)
+})
+
+test('a Latin word with a Persian suffix is cut at the script change', () => {
+  expect(show('مخزن هیچ remote‌ای ندارد و بعد')).toBe(`ای ندارد و بعدremote\u200c مخزن هیچ`)
+})
+
+test('a Persian prefix and a Latin suffix are cut apart too', () => {
+  expect(show('کلاس‌Konsole را باز کن و فایل‌های config‌شده را ببین')).toBe(`شده را ببینconfig\u200c را باز کن و فایل\u200cهای Konsoleکلاس\u200c`)
+})
+
+test('several Latin words with Persian suffixes keep their order', () => {
+  expect(show('این mod‌ها و reload‌ها خوب هستند')).toBe(`ها خوب هستندreload\u200c ها وmod\u200c این`)
+})
+
+test('a path in code that holds Persian words is not reordered', () => {
+  expect(show('مسیر `~/.claude/dev-mods/<شناسه‌ی نشست>/persian-rtl/` است')).toBe(`است ~/.claude/dev-mods/<شناسه\u200cی نشست>/persian-rtl/ مسیر`)
+})
+
+test('lone symbols in code between Persian words keep their place', () => {
+  expect(show('برای `●` و `❯` را برگردانم')).toBe(`برای ● و ❯ را برگردانم`)
 })

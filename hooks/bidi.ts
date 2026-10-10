@@ -8,7 +8,9 @@
 // affect the order.
 
 export type Style = 'plain' | 'bold' | 'italic' | 'code'
-export type Ch = { c: string; s: Style }
+// `g` marks the first character of a piece that was cut from a word at a change of
+// script and so follows the previous piece with no space.
+export type Ch = { c: string; s: Style; g?: boolean }
 export type Word = Ch[]
 export type Segment = { text: string; style: Style }
 export type Row = { segments: Segment[]; width: number }
@@ -20,6 +22,7 @@ const NBSP = ' '
 const L_ANCHOR = '⠀'
 const PERSIAN = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/
 const LETTER = /\p{L}/u
+const LATIN = /\p{Script=Latin}/u
 const ALNUM = /[\p{L}\p{N}]/u
 const ZERO_WIDTH = /[​-‏‪-‮ً-ٰٟ]/
 const LEAD = /[«(\[{"“‘<]/
@@ -29,6 +32,7 @@ const TRAIL = /[.,،؛;:!?؟…»)\]}"”’>]/
 const STRONG_RTL_PUNCTUATION = /[\u061B\u061F]/
 const MIRROR: Record<string, string> = {
   '(': ')', ')': '(', '[': ']', ']': '[', '{': '}', '}': '{', '«': '»', '»': '«', '<': '>', '>': '<',
+  '‹': '›', '›': '‹', '❮': '❯', '❯': '❮', '❬': '❭', '❭': '❬', '❰': '❱', '❱': '❰', '⟨': '⟩', '⟩': '⟨',
 }
 const INLINE = /(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|\*[^*\s][^*]*\*|\[[^\]]+\]\([^)]*\))/
 
@@ -124,6 +128,80 @@ const scriptOf = (word: Word): Script | null => {
   const text = textOf(word)
 
   return [...text].some(c => PERSIAN.test(c) && ALNUM.test(c)) ? 'R' : LETTER.test(text) ? 'L' : null
+}
+
+// A word that mixes the scripts (mod‌ها, کلاس‌Konsole, remote‌ای) is cut at each
+// change of script into pieces that follow one another with no space. Left whole,
+// its Latin letters split the Persian run around them and the terminal draws the
+// pieces in the wrong order. A word with a code span in it is left alone.
+const strongScriptOf = (c: string): Script | null =>
+  PERSIAN.test(c) && ALNUM.test(c) ? 'R' : LATIN.test(c) ? 'L' : null
+
+const splitMixedWords = (words: Word[]): Word[] =>
+  words.flatMap(word => {
+    if (word.some(ch => ch.s === 'code')) {
+      return [word]
+    }
+
+    const pieces: Word[] = []
+    let piece: Word = []
+    let side: Script | null = null
+
+    for (const ch of word) {
+      const own = strongScriptOf(ch.c)
+
+      if (own && side && own !== side) {
+        pieces.push(piece)
+        piece = []
+      }
+
+      side = own ?? side
+      piece.push(ch)
+    }
+
+    pieces.push(piece)
+
+    return pieces.map((part, i) => (i === 0 ? part : [{ ...part[0]!, g: true }, ...part.slice(1)]))
+  })
+
+// A code span is a literal: drawn as written, left to right, in one piece. Its
+// words are therefore one Latin unit, whatever they hold (a path with Persian
+// in it, a number in Persian digits), unless it is Persian text and nothing
+// else, which reads like any Persian.
+const codeSpanScripts = (words: Word[]): Map<number, Script> => {
+  const scripts = new Map<number, Script>()
+  const isCode = (word: Word): boolean => word.some(ch => ch.s === 'code')
+  let i = 0
+
+  while (i < words.length) {
+    if (!isCode(words[i]!)) {
+      i++
+
+      continue
+    }
+
+    let j = i
+
+    while (j < words.length && isCode(words[j]!)) {
+      j++
+    }
+
+    const chars = words.slice(i, j).flat()
+    const latin = chars.some(ch => LATIN.test(ch.c))
+    const persian = chars.some(ch => PERSIAN.test(ch.c) && LETTER.test(ch.c))
+
+    // Without a letter or a digit the span has nothing the terminal would call
+    // left-to-right (a lone ● or /): it stays a neutral word of its neighbour.
+    if (chars.some(ch => ALNUM.test(ch.c))) {
+      for (let k = i; k < j; k++) {
+        scripts.set(k, persian && !latin ? 'R' : 'L')
+      }
+    }
+
+    i = j
+  }
+
+  return scripts
 }
 
 const mirrored = (chars: Ch[]): Ch[] =>
@@ -429,7 +507,7 @@ const emitUnits = (units: Unit[]): Ch[] => {
 const NEUTRAL_WORD = /^[^\p{L}\p{N}\p{M}]+$/u
 
 const isNeutralWord = (word: Word): boolean =>
-  NEUTRAL_WORD.test(textOf(word)) && !STRONG_RTL_PUNCTUATION.test(textOf(word))
+  !word.some(ch => ch.s === 'code') && NEUTRAL_WORD.test(textOf(word)) && !STRONG_RTL_PUNCTUATION.test(textOf(word))
 
 const splitNeutralEdges = (words: Word[]): { lead: Word[]; core: Word[]; trail: Word[] } => {
   let a = 0
@@ -668,14 +746,17 @@ export const layoutRow = (words: Word[], marker = '', isFirst = true, indent = 0
     return layoutLtr(words, marker, isFirst, indent)
   }
 
+  words = splitMixedWords(words)
+
   const scripts: Script[] = []
   const first = words.map(scriptOf).find(s => s) ?? 'R'
+  const forced = codeSpanScripts(words)
   let previous: Script | null = null
 
-  for (const word of words) {
-    previous = scriptOf(word) ?? previous ?? first
+  words.forEach((word, i) => {
+    previous = forced.get(i) ?? scriptOf(word) ?? previous ?? first
     scripts.push(previous)
-  }
+  })
 
   const runs: { script: Script; words: Word[] }[] = []
 
@@ -714,15 +795,22 @@ export const layoutRow = (words: Word[], marker = '', isFirst = true, indent = 0
   })
 
   const chars: Ch[] = []
+  let laterRunGlued = false
 
   for (const run of runs.reverse()) {
     const body = runChars(run.words, run.script, spanning)
 
     if (chars.length) {
       const needsAnchor = run.script === 'L' && (startsWithDigit(body) || STRONG_RTL_PUNCTUATION.test(body[0]!.c))
-      chars.push({ c: needsAnchor ? L_ANCHOR : ' ', s: 'plain' })
+
+      // Two pieces of one word are not separated: the later run (already
+      // placed) begins with the piece that follows this run's last one.
+      if (needsAnchor || !laterRunGlued) {
+        chars.push({ c: needsAnchor ? L_ANCHOR : ' ', s: 'plain' })
+      }
     }
 
+    laterRunGlued = run.words[0]![0]!.g === true
     chars.push(...body)
   }
 
