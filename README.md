@@ -6,12 +6,30 @@
 
 > **وضعیت:** آزمایش‌شده در Konsole با Claude Code نسخه‌ی 2.1.289. در ترمینال‌های دیگر ممکن است نتیجه فرق کند (بخش «محدودیت‌ها» را ببینید).
 
+## نصب سریع
+
+**کلون کردن لازم نیست.** Claude Code خودش مخزن را از GitHub می‌گیرد. فقط این دو دستور را در ترمینال بزنید (نه داخل Claude Code):
+
+```sh
+claude plugin marketplace add mhasgari/persian-rtl-claude-code
+claude plugin install persian-rtl@rtlclaudecode
+```
+
+بعد Claude Code را دوباره باز کنید (یا اگر باز است، `/reload-plugins`). تمام. چیزهایی که از قبل لازم دارید:
+
+1. Claude Code نصب‌شده و واردشده (`claude --version`) که پلاگین‌های «mod» را پشتیبانی کند (آزمایش‌شده با 2.1.289).
+2. `git` نصب باشد، چون Claude Code مخزن را با git می‌گیرد.
+3. یک ترمینال با فونت هم‌عرضی که حروف فارسی دارد (برای نمونه Vazir Code)؛ آزمایش‌شده فقط در Konsole.
+
+هیچ فایل تنظیمات دیگری، سوئیچ خط فرمان، یا ساخت (build) و `bun install` لازم نیست. فقط اگر می‌خواهید کد را تغییر دهید یا ابزارهای `tools/` را اجرا کنید، مخزن را کلون کنید (بخش «توسعه»).
+
 ## نیازمندی‌ها
 
 - **Claude Code** با پشتیبانی از پلاگین‌های «mod» (هوک‌های تابعی و رویداد `ui.render`)؛ آزمایش‌شده با نسخه‌ی 2.1.289.
 - **ترمینال:** آزمایش‌شده فقط در Konsole؛ در ترمینال دیگر با `tools/bidi-oracle/calibrate.txt` رفتارش را بسنجید.
 - **فونت هم‌عرض** با حروف فارسی (برای نمونه Vazir Code)؛ بخش «محدودیت‌ها».
-- ابزارهای `tools/bidi-oracle/` فقط برای توسعه‌اند و به `bun` و `python3` و `libicuuc` نیاز دارند.
+- `git` برای نصب از GitHub.
+- ابزارهای `tools/bidi-oracle/` فقط برای توسعه‌اند و به `bun` و `python3` و `libicuuc` نیاز دارند؛ برای استفاده‌ی عادی لازم نیستند.
 
 ## نصب
 
@@ -24,7 +42,7 @@ claude plugin marketplace add mhasgari/persian-rtl-claude-code
 claude plugin install persian-rtl@rtlclaudecode
 ```
 
-(`mhasgari/persian-rtl-claude-code` مخزن GitHub است؛ نام `rtlclaudecode` در دستور دوم نام marketplace درون مخزن است، نه نام مخزن. اگر مخزن را کلون کرده‌اید، به‌جای نشانی GitHub مسیر پوشه‌اش را بدهید.)
+(`mhasgari/persian-rtl-claude-code` مخزن GitHub است؛ نام `rtlclaudecode` در دستور دوم نام marketplace درون مخزن است، نه نام مخزن. کلون کردن لازم نیست؛ اگر کلون کرده‌اید، به‌جای نشانی GitHub مسیر پوشه‌اش را بدهید.)
 
 اگر Claude Code از قبل باز است، داخل آن `/reload-plugins` را بزنید. برای خاموش کردن: `claude plugin disable persian-rtl`.
 
