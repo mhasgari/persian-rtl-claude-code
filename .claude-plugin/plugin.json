@@ -1,6 +1,6 @@
 {
   "name": "persian-rtl",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Right-to-left layout for Persian text in Claude Code's transcript (messages, command output, tool calls and results), correct in terminals such as Konsole that cannot do it themselves; optionally asks the model for English progress notes",
   "keywords": [
     "rtl",

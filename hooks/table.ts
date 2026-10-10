@@ -3,7 +3,7 @@
 // right in their column. Claude Code draws a table left to right, first column on
 // the left, with each cell reordered by the terminal on its own, which is wrong for
 // Persian; so a table with Persian in it is drawn here, with box characters.
-import { cellWidth, hasPersian, isRtl, layoutRow, parseInline, wrapWords } from './bidi'
+import { hasPersian, isRtl, layoutRow, parseInline, wrapWords } from './bidi'
 import type { Segment, Word } from './bidi'
 
 export type Table = { header: string[]; rows: string[][] }
@@ -116,5 +116,3 @@ export const layoutTable = (table: Table, available: number): Segment[][] | null
 
   return out
 }
-
-export const tableWidth = (lines: Segment[][]): number => cellWidth(lines[0]!.map(s => s.text).join(''))

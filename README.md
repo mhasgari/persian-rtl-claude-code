@@ -26,6 +26,8 @@ claude plugin install persian-rtl@rtlclaudecode
 
 اگر Claude Code از قبل باز است، داخل آن `/reload-plugins` را بزنید. برای خاموش کردن: `claude plugin disable persian-rtl`.
 
+چون marketplace یک پوشه است، پلاگین **مستقیم از همان پوشه‌ی مخزن** خوانده می‌شود: پوشه را جابه‌جا یا پاک نکنید، و ویرایش‌های بعدی با `/reload-plugins` اعمال می‌شوند. نسخه‌ها در [CHANGELOG.md](CHANGELOG.md) هستند.
+
 ### اجرای موقت (فقط برای همان اجرا)
 
 ```sh
