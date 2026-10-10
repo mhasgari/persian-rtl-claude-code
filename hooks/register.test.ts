@@ -281,3 +281,30 @@ test('cut symbols around a Latin word', () => {
 test('a cut between two Latin words is not a cut', () => {
   expect(show('Latin ● Latin دوم')).toBe(`دوم Latin ● Latin`)
 })
+
+// The progress-notes section, switched on by default and by one option.
+const composeInput = { model: 'sonnet', promptModel: 'sonnet', surfaces: [], tools: [], outputStyle: null, traits: [] } as const
+test('the progress-notes section is added to the system prompt by default', async ($, on) => {
+  on('prompt.compose', () => ({ sections: [] }))
+
+  const { sections } = await $.prompt.compose(composeInput)
+
+  expect(sections.map(s => s.id)).toContain('persian-rtl:english-progress-notes')
+  expect(sections.find(s => s.id === 'persian-rtl:english-progress-notes')!.text).toContain('English')
+})
+
+test('the progress-notes section is left out when the option is off', { options: { englishProgressNotes: false } }, async ($, on) => {
+  on('prompt.compose', () => ({ sections: [] }))
+
+  const { sections } = await $.prompt.compose(composeInput)
+
+  expect(sections.map(s => s.id)).not.toContain('persian-rtl:english-progress-notes')
+})
+
+test('the progress-notes section keeps the sections the engine composed', async ($, on) => {
+  on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'intro text', scope: 'shared' as const }] }))
+
+  const { sections } = await $.prompt.compose(composeInput)
+
+  expect(sections.map(s => s.id)).toEqual(['intro', 'persian-rtl:english-progress-notes'])
+})

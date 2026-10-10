@@ -1,6 +1,7 @@
 import type { Register } from 'claude-code'
 
 import { hasPersian, isRtl, layoutRow, parseInline, plainWords, wrapWords } from './bidi'
+import { PROGRESS_NOTES, PROGRESS_NOTES_ID } from './progress-notes'
 import type { Row, Style, Word } from './bidi'
 
 type Block =
@@ -125,7 +126,20 @@ export const callHeader = (tool: string, input: unknown): string => {
   return `${tool}(${arg.length > 200 ? `${arg.slice(0, 200)}…` : arg})`
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  // On unless the user turned it off: the summaries of the text between tool calls
+  // can only be read the right way round if that text is English (see progress-notes.ts).
+  if (options.englishProgressNotes !== false) {
+    on('prompt.compose', async ($, e, next) => {
+      const result = await next(e)
+
+      return {
+        ...result,
+        sections: [...result.sections, { id: PROGRESS_NOTES_ID, text: PROGRESS_NOTES, scope: 'session' }],
+      }
+    })
+  }
+
   for (const component of [
     'AssistantMessage',
     'UserMessage',
