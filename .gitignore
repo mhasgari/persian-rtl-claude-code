@@ -2,3 +2,4 @@
 tsconfig.json
 .fuzz.md
 *.png
+__pycache__/
