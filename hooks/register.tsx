@@ -62,13 +62,19 @@ export const toBlocks = (text: string): Block[] => {
 }
 
 // Program output: one block per line, nothing parsed, capped so a huge result
-// does not become thousands of elements.
+// does not become thousands of elements. `marker` goes on the first line.
 const MAX_OUTPUT_LINES = 60
 
-export const outputBlocks = (text: string): Block[] => {
+export const outputBlocks = (text: string, marker = ''): Block[] => {
   const lines = text.replace(/\n+$/, '').split('\n')
   const shown = lines.slice(0, MAX_OUTPUT_LINES)
-  const blocks: Block[] = shown.map(line => ({ kind: 'prose', text: line, marker: '', indent: 0, style: 'plain' }))
+  const blocks: Block[] = shown.map((line, i) => ({
+    kind: 'prose',
+    text: line,
+    marker: i === 0 ? marker : '',
+    indent: 0,
+    style: 'plain',
+  }))
 
   if (lines.length > shown.length) {
     blocks.push({ kind: 'prose', text: `… +${lines.length - shown.length} lines`, marker: '', indent: 0, style: 'plain' })
@@ -78,47 +84,86 @@ export const outputBlocks = (text: string): Block[] => {
 }
 
 type Mode = 'markdown' | 'output'
+type Section = { text: string; mode: Mode; color?: string; dim?: boolean; marker?: string }
 
-// `bash` is the one tool result whose shape is known: { stdout, stderr }.
-const bashText = (output: unknown): { out: string; err: string } => {
-  const { stdout, stderr } = (output ?? {}) as { stdout?: unknown; stderr?: unknown }
+const asText = (value: unknown): string => (typeof value === 'string' ? value : '')
 
-  return { out: typeof stdout === 'string' ? stdout : '', err: typeof stderr === 'string' ? stderr : '' }
+// A tool's result is text for Bash ({ stdout, stderr }) and for the tools that
+// carry their text in one well-known field (Read's file.content, Grep's
+// content ...). Anything else (a diff, a structured result) is left to the
+// engine, which draws it better than a flat list of lines could.
+export const resultSections = (output: unknown): Section[] => {
+  if (typeof output === 'string') {
+    return [{ text: output, mode: 'output' }]
+  }
+
+  const o = (output ?? {}) as Record<string, unknown>
+  const file = (o.file ?? {}) as Record<string, unknown>
+  const sections: Section[] = []
+  const main = [o.stdout, o.content, file.content, o.text, o.result, o.output].map(asText).find(t => t.trim())
+
+  if (main) {
+    sections.push({ text: main, mode: 'output' })
+  }
+
+  if (asText(o.stderr).trim()) {
+    sections.push({ text: asText(o.stderr), mode: 'output', color: 'red' })
+  }
+
+  return sections
+}
+
+// The one-line header of a tool call: its name and the argument that says what
+// it does.
+export const callHeader = (tool: string, input: unknown): string => {
+  const o = (input ?? {}) as Record<string, unknown>
+  const key = ['command', 'description', 'file_path', 'path', 'pattern', 'query', 'prompt', 'url'].find(k =>
+    asText(o[k]).trim(),
+  )
+  const arg = (key ? asText(o[key]) : JSON.stringify(input) ?? '').replace(/\s+/g, ' ').trim()
+
+  return `${tool}(${arg.length > 200 ? `${arg.slice(0, 200)}…` : arg})`
 }
 
 export const register: Register = on => {
-  for (const component of ['AssistantMessage', 'UserMessage', 'CommandOutput', 'ToolResult'] as const) {
+  for (const component of [
+    'AssistantMessage',
+    'UserMessage',
+    'CommandOutput',
+    'InfoNotice',
+    'ToolUse',
+    'ToolResult',
+  ] as const) {
     on('ui.render', { component }, ($, e, next) => {
       const props = e.props as Record<string, unknown>
-      const sections: { text: string; mode: Mode; color?: string }[] = []
+      let sections: Section[] = []
 
       if (component === 'ToolResult') {
-        if (props.tool !== 'Bash' || props.isErrored === true) {
+        if (props.isErrored === true) {
           return next(e)
         }
 
-        const { out, err } = bashText(props.output)
-
-        if (!hasPersian(out + err)) {
-          return next(e)
-        }
-
-        if (out.trim()) {
-          sections.push({ text: out, mode: 'output' })
-        }
-
-        if (err.trim()) {
-          sections.push({ text: err, mode: 'output', color: 'red' })
-        }
+        sections = resultSections(props.output)
+      } else if (component === 'ToolUse') {
+        sections = [
+          {
+            text: callHeader(asText(props.tool), props.input),
+            mode: 'output',
+            marker: '●',
+            color: props.isErrored === true ? 'red' : undefined,
+            dim: props.isRunning === true,
+          },
+        ]
       } else if (typeof props.text === 'string' && props.text.length <= 10000) {
-        // Messages are always laid out right to left; other rows only when
-        // they hold at least one Persian character.
-        if (component === 'CommandOutput' && !hasPersian(props.text)) {
-          return next(e)
-        }
+        sections = [{ text: props.text, mode: 'markdown', dim: component === 'InfoNotice' }]
+      }
 
-        sections.push({ text: props.text, mode: 'markdown' })
-      } else {
+      // Messages are always laid out right to left; every other row only when
+      // it holds at least one Persian character.
+      const isMessage = component === 'AssistantMessage' || component === 'UserMessage'
+      const persian = component === 'ToolUse' ? hasPersian(JSON.stringify(props.input) ?? '') : sections.some(x => hasPersian(x.text))
+
+      if (!sections.length || !(isMessage || persian)) {
         return next(e)
       }
 
@@ -127,7 +172,8 @@ export const register: Register = on => {
       const rows: unknown[] = []
 
       sections.forEach((section, k) => {
-        const blocks = section.mode === 'markdown' ? toBlocks(section.text) : outputBlocks(section.text)
+        const blocks =
+          section.mode === 'markdown' ? toBlocks(section.text) : outputBlocks(section.text, section.marker)
 
         blocks.forEach((block, b) => {
           const key = `s${k}b${b}`
@@ -169,6 +215,7 @@ export const register: Register = on => {
                     bold={s.style === 'bold'}
                     italic={s.style === 'italic'}
                     color={s.style === 'code' ? 'cyan' : section.color}
+                    dimColor={section.dim}
                   >
                     {s.text}
                   </Text>

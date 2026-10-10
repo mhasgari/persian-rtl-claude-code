@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 import { hasPersian, layoutRow, parseInline, plainWords } from './bidi'
-import { outputBlocks, toBlocks } from './register'
+import { callHeader, outputBlocks, resultSections, toBlocks } from './register'
 
 const A = '⠀'
 const N = ' '
@@ -66,4 +66,20 @@ test('output is capped and says how many lines were left out', () => {
   const blocks = outputBlocks(Array.from({ length: 70 }, (_, i) => `سطر ${i}`).join('\n'))
   expect(blocks).toHaveLength(61)
   expect(blocks[60]).toMatchObject({ text: '… +10 lines' })
+})
+
+test('a tool result is text only where its shape is known', () => {
+  expect(resultSections({ stdout: 'سلام', stderr: '' })).toEqual([{ text: 'سلام', mode: 'output' }])
+  expect(resultSections({ file: { content: 'متن' } })).toEqual([{ text: 'متن', mode: 'output' }])
+  expect(resultSections({ stdout: 'a', stderr: 'خطا' })).toEqual([
+    { text: 'a', mode: 'output' },
+    { text: 'خطا', mode: 'output', color: 'red' },
+  ])
+  expect(resultSections({ structuredPatch: [] })).toEqual([])
+})
+
+test('a tool call header names the tool and its main argument', () => {
+  expect(callHeader('Bash', { command: 'echo سلام', description: 'x' })).toBe('Bash(echo سلام)')
+  expect(callHeader('Read', { file_path: '/a/b.md' })).toBe('Read(/a/b.md)')
+  expect(callHeader('Custom', { n: 1 })).toBe('Custom({"n":1})')
 })
